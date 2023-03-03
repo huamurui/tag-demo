@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>tag-demo</title>
+  <style>
+    body {
+      font-family:'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif
+    }
+    hr {
+      margin: 20px 0;
+    }
+    select {
+      margin: 10px 0;
+    }
+
+    .tag-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .tag {
+      padding: 5px 10px;
+      border: 1px solid #000;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .tag.active {
+      background-color: #000;
+      color: #fff;
+    }
+
+    .item-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .item {
+      padding: 5px 10px;
+      border: 1px solid #000;
+      border-radius: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="tag-container"></div>
+  <label for="mode">Mode</label>
+  <select name="mode" id="mode">
+    <option value="any">Any(get item which has any one of the tags that selected)</option>
+    <option value="every">Every(get item contains all selected tags)</option>
+    <option value="exact">Exact(usually don't work well)</option>
+  </select>
+  <hr>
+  <div class="item-container"></div>
+  <script>
+    const item = [
+      { name : 'apple', tag: [ 'red', 'sweet','round','fruit','hard'] },
+      { name : 'orange', tag: [ 'orange', 'sweet','round','fruit','hard'] },
+      { name : 'banana', tag: [ 'yellow', 'sweet','round','fruit','soft'] },
+      { name : 'grapes', tag: [ 'green', 'sweet','round','fruit','soft'] },
+      { name : 'mango', tag: [ 'yellow', 'sweet','round','fruit','soft'] },
+      { name : 'pineapple', tag: [ 'yellow', 'sweet','round','fruit','soft'] },
+      { name : 'watermelon', tag: [ 'green', 'sweet','round','fruit','soft'] },
+      { name : 'papaya', tag: [ 'yellow', 'sweet','round','fruit','soft'] },
+      { name : 'strawberry', tag: [ 'red', 'sweet','round','fruit','soft'] },
+      { name : 'cherry', tag: [ 'red', 'sweet','round','fruit','soft'] },
+      { name : 'pomegranate', tag: [ 'red', 'sweet','round','fruit','hard'] },
+      { name : 'guava', tag: [ 'green', 'sweet','round','fruit','soft'] },
+      { name : 'jackfruit', tag: [ 'green', 'sweet','round','fruit','soft'] },
+      { name : 'kiwi', tag: [ 'green', 'sweet','round','fruit','soft'] },
+      { name : 'lemon', tag: [ 'yellow', 'sour','round','fruit','hard'] },
+      { name : 'lime', tag: [ 'green', 'sour','round','fruit','hard'] },
+      { name : 'coconut', tag: [ 'brown', 'sweet','round','fruit','hard'] },
+      { name : 'avocado', tag: [ 'green', 'sweet','round','fruit','soft'] },
+      { name : 'peach', tag: [ 'orange', 'sweet','round','fruit','soft'] },
+      { name : 'pear', tag: [ 'green', 'sweet','round','fruit','soft'] },
+      { name : 'plum', tag: [ 'purple', 'sweet','round','fruit','soft'] },
+      { name : 'pomegranate', tag: [ 'red', 'sweet','round','fruit','hard']}
+
+    ]
+    let filteredItem = []
+    const allTags = [...new Set(item.flatMap(item => item.tag))]
+    let choice = []
+
+    let mode = localStorage.getItem('mode') || 'any'
+
+    const tagContainer = document.querySelector('.tag-container')
+    const itemContainer = document.querySelector('.item-container')
+    const modeContainer  = document.querySelector('#mode')
+
+    allTags.forEach(tag => {
+      const tagElement = document.createElement('div')
+      tagElement.classList.add('tag')
+      tagElement.innerText = tag
+      tagContainer.append(tagElement)
+    })
+
+    item.forEach(item => {
+      const itemElement = document.createElement('div')
+      itemElement.classList.add('item')
+      itemElement.innerText = item.name
+      itemContainer.append(itemElement)
+    })
+
+    modeContainer.value = mode
+
+    // store the choice in local storage
+    // set active class to the tag that is selected
+
+    setTagActive()
+    // setItemWanted()
+
+  // set mode to local storage
+    modeContainer.addEventListener('change', e => {
+      localStorage.setItem('mode', e.target.value)
+      setItemWanted()
+    })
+
+    // set choice to local storage
+    tagContainer.addEventListener('click', e => {
+      if (e.target.classList.contains('tag')) {
+        const tag = e.target.innerText
+        if (choice.includes(tag)) {
+          choice = choice.filter(item => item !== tag)
+        } else {
+          choice.push(tag)
+        }
+        localStorage.setItem('choice', JSON.stringify(choice))
+      }
+      setTagActive()
+      setItemWanted()
+    })
+
+    // filter the item based on the choice and mode
+    function filterItem (item) {
+      const choice = JSON.parse(localStorage.getItem('choice')) || []
+      const mode = localStorage.getItem('mode') || 'any'
+      filteredItem = []
+      if (mode === 'any') 
+        // any filter.. if any of the tag matches
+        filteredItem = item.filter(item => item.tag.some(tag => choice.includes(tag)))
+      else if (mode === 'every') 
+        // every filter.. if all the tag matches
+        filteredItem = item.filter(item => choice.every(tag => item.tag.includes(tag)))
+      else if (mode === 'exact') 
+        // filter the item which has all the tags selected
+        filteredItem = item.filter(item => item.tag.every(tag => choice.includes(tag)))
+      return filteredItem
+    }
+
+    // set wanted item to display and unwanted item to hide
+    function setItemWanted () {
+      const filteredItem = filterItem(item)
+      const itemElements = document.querySelectorAll('.item')
+      itemElements.forEach(itemElement => {
+        if (filteredItem.some(item => item.name === itemElement.innerText)) {
+          itemElement.style.display = 'block'
+        } else {
+          itemElement.style.display = 'none'
+        }
+      })
+    }
+
+    function setTagActive (){
+      const tagElements = document.querySelectorAll('.tag')
+      tagElements.forEach(tagElement => {
+        if (choice.includes(tagElement.innerText)) {
+          tagElement.classList.add('active')
+        } else {
+          tagElement.classList.remove('active')
+        }
+      })
+    }
+  </script>
+</body>
+</html>
