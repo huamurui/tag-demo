@@ -61,6 +61,8 @@
   <body>
     <div id="root"></div>
     <script type="text/babel">
+      const TagContext = React.createContext(null)
+
       function TagDemo(props) {
         const tags = []
         props.items.forEach((item) => {
@@ -74,8 +76,6 @@
         const [activeTags, setActiveTags] = React.useState([])
         const [chosenItems, setChosenItems] = React.useState([])
         const [mode, setMode] = React.useState("and")
-        // const TagContext = React.createContext(null)
-
         React.useEffect(() => {
           if (mode === "and") {
             setChosenItems(
@@ -96,7 +96,9 @@
           <div>
             <h1>Tag Demo</h1>
             <div>
-              <TagsContainer tags={tags} activeTags={activeTags} setActiveTags={setActiveTags} />
+              <TagContext.Provider value={{ activeTags, setActiveTags }}>
+                <TagsContainer tags={tags} />
+              </TagContext.Provider>
               <ModeSelector modes={["and", "or"]} setMode={setMode} />
               <hr />
               <ItemsContainer items={chosenItems} />
@@ -144,18 +146,21 @@
       }
 
       function Tag(props) {
-        const isActive = props.activeTags.includes(props.tag)
+        const context = React.useContext(TagContext)
+        const isActive = context.activeTags.includes(props.tag)
         const className = isActive ? "tag active" : "tag"
         return (
           <div
             className={className}
-            onClick={() => {
-              if (props.activeTags.includes(props.tag)) {
-                props.setActiveTags(props.activeTags.filter((tag) => tag !== props.tag))
-              } else {
-                props.setActiveTags([...props.activeTags, props.tag])
-              }
-            }}
+            onClick={
+              isActive
+                ? () => {
+                    context.setActiveTags(context.activeTags.filter((tag) => tag !== props.tag))
+                  }
+                : () => {
+                    context.setActiveTags([...context.activeTags, props.tag])
+                  }
+            }
           >
             {props.tag}
           </div>
