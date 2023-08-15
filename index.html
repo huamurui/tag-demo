@@ -15,6 +15,9 @@
     select {
       margin: 10px 0;
     }
+    p {
+      color: burlywood;
+    }
 
     .tag-container {
       display: flex;
@@ -45,134 +48,205 @@
   </style>
 </head>
 <body>
-  <div class="tag-container"></div>
-  <label for="mode">Mode</label>
-  <select name="mode" id="mode">
-    <option value="any">Any(get item which has any one of the tags that selected)</option>
-    <option value="every">Every(get item contains all selected tags)</option>
-    <option value="exact">Exact(usually don't work well)</option>
-  </select>
-  <hr>
-  <div class="item-container"></div>
+  <div id="app"></div>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <script>
-    const item = [
-      { name : 'apple', tag: [ 'red', 'sweet','round','fruit','hard'] },
-      { name : 'orange', tag: [ 'orange', 'sweet','round','fruit','hard'] },
-      { name : 'banana', tag: [ 'yellow', 'sweet','round','fruit','soft'] },
-      { name : 'grapes', tag: [ 'green', 'sweet','round','fruit','soft'] },
-      { name : 'mango', tag: [ 'yellow', 'sweet','round','fruit','soft'] },
-      { name : 'pineapple', tag: [ 'yellow', 'sweet','round','fruit','soft'] },
-      { name : 'watermelon', tag: [ 'green', 'sweet','round','fruit','soft'] },
-      { name : 'papaya', tag: [ 'yellow', 'sweet','round','fruit','soft'] },
-      { name : 'strawberry', tag: [ 'red', 'sweet','round','fruit','soft'] },
-      { name : 'cherry', tag: [ 'red', 'sweet','round','fruit','soft'] },
-      { name : 'pomegranate', tag: [ 'red', 'sweet','round','fruit','hard'] },
-      { name : 'guava', tag: [ 'green', 'sweet','round','fruit','soft'] },
-      { name : 'jackfruit', tag: [ 'green', 'sweet','round','fruit','soft'] },
-      { name : 'kiwi', tag: [ 'green', 'sweet','round','fruit','soft'] },
-      { name : 'lemon', tag: [ 'yellow', 'sour','round','fruit','hard'] },
-      { name : 'lime', tag: [ 'green', 'sour','round','fruit','hard'] },
-      { name : 'coconut', tag: [ 'brown', 'sweet','round','fruit','hard'] },
-      { name : 'avocado', tag: [ 'green', 'sweet','round','fruit','soft'] },
-      { name : 'peach', tag: [ 'orange', 'sweet','round','fruit','soft'] },
-      { name : 'pear', tag: [ 'green', 'sweet','round','fruit','soft'] },
-      { name : 'plum', tag: [ 'purple', 'sweet','round','fruit','soft'] },
-      { name : 'pomegranate', tag: [ 'red', 'sweet','round','fruit','hard']}
+    const { createApp, defineComponent, ref, toRefs, reactive, computed, watch, h, provide, inject } = Vue
+    const root = document.querySelector('#app')
+    let TagDemo, Tags, Items, Mode, Tag, Item
+    TagDemo = defineComponent(
+      (props)=>{
+        const tags = reactive([])
+        props.items.forEach((item)=>{
+          item.tags.forEach((tag)=>{
+            if(!tags.find((t)=>t.tag === tag)){
+              tags.push({tag, isActive: false})
+            }
+          })
+        })
+        const modes = ['and', 'or']
+        let mode = ref('and')
+        let choosenItems = reactive([])
 
-    ]
-    let filteredItem = []
-    const allTags = [...new Set(item.flatMap(item => item.tag))]
-    let choice = []
+        getItems(mode.value, tags.filter((tag)=>tag.isActive))
+        watch(()=>tags, (val)=>{
+          getItems(mode.value, val.filter((tag)=>tag.isActive).map((tag)=>tag.tag))
+        }, {deep: true})
+        watch(()=>mode.value, (val)=>{
+          getItems(val, tags.filter((tag)=>tag.isActive).map((tag)=>tag.tag))
+        })
 
-    let mode = localStorage.getItem('mode') || 'any'
-
-    const tagContainer = document.querySelector('.tag-container')
-    const itemContainer = document.querySelector('.item-container')
-    const modeContainer  = document.querySelector('#mode')
-
-    allTags.forEach(tag => {
-      const tagElement = document.createElement('div')
-      tagElement.classList.add('tag')
-      tagElement.innerText = tag
-      tagContainer.append(tagElement)
-    })
-
-    item.forEach(item => {
-      const itemElement = document.createElement('div')
-      itemElement.classList.add('item')
-      itemElement.innerText = item.name
-      itemContainer.append(itemElement)
-    })
-
-    modeContainer.value = mode
-
-    // store the choice in local storage
-    // set active class to the tag that is selected
-
-    setTagActive()
-    // setItemWanted()
-
-  // set mode to local storage
-    modeContainer.addEventListener('change', e => {
-      localStorage.setItem('mode', e.target.value)
-      setItemWanted()
-    })
-
-    // set choice to local storage
-    tagContainer.addEventListener('click', e => {
-      if (e.target.classList.contains('tag')) {
-        const tag = e.target.innerText
-        if (choice.includes(tag)) {
-          choice = choice.filter(item => item !== tag)
-        } else {
-          choice.push(tag)
+        function getItems(mode = modes.value, tags, items = props.items) {
+          if(mode === 'and'){
+            choosenItems = items.filter((item)=>{
+              return tags.every((tag)=>{
+                return item.tags.includes(tag)
+              })
+            })
+          }else if(mode === 'or'){
+            choosenItems = items.filter((item)=>{
+              return tags.some((tag)=>{
+                return item.tags.includes(tag)
+              })
+            })
+          }
         }
-        localStorage.setItem('choice', JSON.stringify(choice))
+
+
+        return ()=>{
+          return (
+            [
+              h('h2', 'Tag Demo'),
+              h('p', 'tags(click to chose):'),
+              h(Tags, {tags, 'onUpdate:tags': (val)=>{
+                const tag = tags.find((tag)=>tag.tag === val)
+                tag.isActive = !tag.isActive
+              }}),
+              h(Mode, {modes, mode: mode.value, 'onUpdate:mode': (val)=>{mode.value = val}}),
+              h('hr'),
+              h('p', 'items:'),
+              h(Items, {choosenItems})
+            ]
+          )
+        }
+      },
+      {
+        props: {
+          items: {
+            type: Array,
+            required: true,
+          },
+        }
       }
-      setTagActive()
-      setItemWanted()
-    })
-
-    // filter the item based on the choice and mode
-    function filterItem (item) {
-      const choice = JSON.parse(localStorage.getItem('choice')) || []
-      const mode = localStorage.getItem('mode') || 'any'
-      filteredItem = []
-      if (mode === 'any') 
-        // any filter.. if any of the tag matches
-        filteredItem = item.filter(item => item.tag.some(tag => choice.includes(tag)))
-      else if (mode === 'every') 
-        // every filter.. if all the tag matches
-        filteredItem = item.filter(item => choice.every(tag => item.tag.includes(tag)))
-      else if (mode === 'exact') 
-        // filter the item which has all the tags selected
-        filteredItem = item.filter(item => item.tag.every(tag => choice.includes(tag)))
-      return filteredItem
+    )
+    TagDemo.comopnents = {
+      Tags,
+      Items,
+      Mode,
     }
+    Mode = defineComponent(
+      (props, context)=>{
+        return()=>{
+          return h('select', {onChange: (e)=>{
+            context.emit('update:mode', e.target.value)
+          }}, props.modes.map((mode)=>{
+            return h('option', {value: mode}, mode)
+          }),
 
-    // set wanted item to display and unwanted item to hide
-    function setItemWanted () {
-      const filteredItem = filterItem(item)
-      const itemElements = document.querySelectorAll('.item')
-      itemElements.forEach(itemElement => {
-        if (filteredItem.some(item => item.name === itemElement.innerText)) {
-          itemElement.style.display = 'block'
-        } else {
-          itemElement.style.display = 'none'
+          )
         }
-      })
-    }
+      },
+      {
+        props: {
+          mode: {
+            type: String,
+            required: true,
+          },
+          modes: {
+            type: Array,
+            required: true,
+          }
+        },
+      }
+    )
 
-    function setTagActive (){
-      const tagElements = document.querySelectorAll('.tag')
-      tagElements.forEach(tagElement => {
-        if (choice.includes(tagElement.innerText)) {
-          tagElement.classList.add('active')
-        } else {
-          tagElement.classList.remove('active')
+    Tags = defineComponent(
+      (props, context)=>{
+        return()=>{
+          return h('div', {class: 'tag-container'}, props.tags.map((tag)=>{
+            return h(Tag, {tag: tag , onClick: ()=>{ context.emit('update:tags', tag.tag)}},
+            )
+          }))
         }
-      })
+      },
+      {
+        props: {
+          tags: {
+            type: Array,
+            required: true,
+          }
+        },
+      }
+    )
+    Tags.components = {
+      Tag,
     }
+    Items = defineComponent(
+      (props)=>{
+        const choosenItems = toRefs(props.choosenItems)
+        return()=>{
+          return h('div', {class: 'item-container'}, props.choosenItems.map((item)=>{
+            return h(Item, {item})
+          }))
+        }
+      },
+      {
+        props: {
+          choosenItems: {
+            type: Array,
+            required: true,
+          }
+        },
+      }
+    )
+    Items.components = {
+      Item,
+    }
+    Tag = defineComponent(
+      (props)=>{
+        return()=>{
+          return h('div', {class: ['tag', {'active': props.tag.isActive}]}, props.tag.tag)
+        }
+      },
+      {
+        props: {
+          tag: {
+            type: Object,
+            required: true,
+          }
+        },
+      }
+    )
+    Item = defineComponent(
+      (props)=>{
+        return()=>{
+          return h('div', {class: 'item'}, props.item.name)
+        }
+      },
+      {
+        props: {
+          item: {
+            type: Object,
+            required: true,
+          }
+        },
+      }
+    )
+
+    const items = [
+      { name: "apple", tags: ["red", "sweet", "round", "fruit", "hard"] },
+      { name: "orange", tags: ["orange", "sweet", "round", "fruit", "hard"] },
+      { name: "banana", tags: ["yellow", "sweet", "round", "fruit", "soft"] },
+      { name: "grapes", tags: ["green", "sweet", "round", "fruit", "soft"] },
+      { name: "mango", tags: ["yellow", "sweet", "round", "fruit", "soft"] },
+      { name: "pineapple", tags: ["yellow", "sweet", "round", "fruit", "soft"] },
+      { name: "watermelon", tags: ["green", "sweet", "round", "fruit", "soft"] },
+      { name: "papaya", tags: ["yellow", "sweet", "round", "fruit", "soft"] },
+      { name: "strawberry", tags: ["red", "sweet", "round", "fruit", "soft"] },
+      { name: "cherry", tags: ["red", "sweet", "round", "fruit", "soft"] },
+      { name: "pomegranate", tags: ["red", "sweet", "round", "fruit", "hard"] },
+      { name: "guava", tags: ["green", "sweet", "round", "fruit", "soft"] },
+      { name: "jackfruit", tags: ["green", "sweet", "round", "fruit", "soft"] },
+      { name: "kiwi", tags: ["green", "sweet", "round", "fruit", "soft"] },
+      { name: "lemon", tags: ["yellow", "sour", "round", "fruit", "hard"] },
+      { name: "lime", tags: ["green", "sour", "round", "fruit", "hard"] },
+      { name: "coconut", tags: ["brown", "sweet", "round", "fruit", "hard"] },
+      { name: "avocado", tags: ["green", "sweet", "round", "fruit", "soft"] },
+      { name: "peach", tags: ["orange", "sweet", "round", "fruit", "soft"] },
+      { name: "pear", tags: ["green", "sweet", "round", "fruit", "soft"] },
+      { name: "plum", tags: ["purple", "sweet", "round", "fruit", "soft"] },
+    ]
+    createApp(h(TagDemo, {items})).mount(root)
   </script>
 </body>
 </html>
