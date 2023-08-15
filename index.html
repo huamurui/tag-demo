@@ -66,7 +66,7 @@
         })
         const modes = ['and', 'or']
         let mode = ref('and')
-        let choosenItems = reactive([])
+        let choosenItems = ref([])
 
         getItems(mode.value, tags.filter((tag)=>tag.isActive))
         watch(()=>tags, (val)=>{
@@ -78,13 +78,13 @@
 
         function getItems(mode = modes.value, tags, items = props.items) {
           if(mode === 'and'){
-            choosenItems = items.filter((item)=>{
+            choosenItems.value = items.filter((item)=>{
               return tags.every((tag)=>{
                 return item.tags.includes(tag)
               })
             })
           }else if(mode === 'or'){
-            choosenItems = items.filter((item)=>{
+            choosenItems.value = items.filter((item)=>{
               return tags.some((tag)=>{
                 return item.tags.includes(tag)
               })
@@ -173,9 +173,10 @@
     }
     Items = defineComponent(
       (props)=>{
-        const choosenItems = toRefs(props.choosenItems)
-        return()=>{
-          return h('div', {class: 'item-container'}, props.choosenItems.map((item)=>{
+        // const {choosenItems} = toRefs(props)
+        // console.log(choosenItems.value)
+        return ()=>{
+          return h('div', {class: 'item-container'}, props.choosenItems.value.map((item)=>{
             return h(Item, {item})
           }))
         }
